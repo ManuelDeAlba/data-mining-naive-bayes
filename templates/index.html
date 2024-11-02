@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5.5 Implementación del modelo Naïve Bayes</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .titulo{
+            text-align: center;
+            text-wrap: pretty;
+        }
+        .form{
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+
+            input{
+                width: 100%;
+            }
+
+            & .etiqueta{
+                display: block;
+                margin-bottom: .25rem;
+                font-weight: bold;
+            }
+
+            & .modelo{
+                display: flex;
+                flex-direction: column;
+
+                div{
+                    display: flex;
+                    gap: 1rem;
+
+                    label{
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        background-color: var(--background);
+                        padding: 10px;
+                        border-radius: 6px;
+                        cursor: pointer;
+
+                        input[type="radio"]{
+                            box-shadow: none;
+                        }
+                    }
+                }
+            }
+        }
+        .error{
+            color: rgb(255, 52, 52);
+            text-align: center;
+            transform: translateY(0);
+            transition: transform .5s;
+
+            @starting-style {
+                transform: translateY(5px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="titulo">5.5 Implementación del modelo Naïve Bayes</h1>
+
+    <form id="form" class="form" enctype="multipart/form-data" method="POST">
+        <input name="file" type="file" accept=".csv" required>
+
+        <label>
+            <span class="etiqueta">Iteraciones:</span>
+            <input name="iteraciones" type="number" value="{{ iteraciones }}" required>
+        </label>
+        
+        <div class="modelo">
+            <span class="etiqueta">Modelo:</span>
+            <div>
+                <label>
+                    <input name="modelo" type="radio" value="naive-bayes" {{ "checked" if modelo == "naive-bayes" else "" }} required> Naïve Bayes
+                </label>
+            </div>
+        </div>
+
+        <label>
+            <span class="etiqueta">Tamaño del conjunto de entrenamiento (%):</span>
+            <input name="train_size" type="number" min="1" max="99" value="{{ train_size }}" required>
+        </label>
+
+        <label>
+            <span class="etiqueta">Atributo clase:</span>
+            <input name="clase" type="text" value="{{ clase }}" required>
+        </label>
+
+        <input type="submit">
+    </form>
+
+    <div id="resultado"></div>
+    <script>
+        const form = document.getElementById("form");
+        const resultado = document.getElementById("resultado");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            
+            try{
+                resultado.innerHTML = "<h3 class='titulo'>Cargando...</h3>";
+
+                const response = await fetch("{{ url_for('uploadFile') }}", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if(data.error){
+                    resultado.innerHTML = `<p class="error">${data.message}</p>`;
+                    return;
+                }
+
+                ({ modelo, clase, iteraciones, train_size, resultados } = data);
+                
+                resultado.innerHTML = `
+                    <h2 class="titulo">Resultados</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Iteration</th>
+                                <th>Accuracy</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>F1</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${resultados.map(({accuracy, precision, recall, f1}, index) => `
+                                <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${accuracy.toFixed(4)}</td>
+                                    <td>${precision.toFixed(4)}</td>
+                                    <td>${recall.toFixed(4)}</td>
+                                    <td>${f1.toFixed(4)}</td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+
+                    ${resultados.map(({accuracy, precision, recall, f1, predicciones, columnas_train, valores_train, columnas_test, valores_test}, instancia) => `
+                        <h2 class="titulo">Instancia ${instancia + 1}</h2>
+
+                        <h4>Conjunto de entrenamiento</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Instancia</th>
+                                    ${columnas_train.map(columna => `<th>${columna}</th>`).join("")}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${valores_train.map((valores, instancia) => `
+                                    <tr>
+                                        <td>${instancia + 1}</td>
+                                        ${valores.map(valor => `<td>${valor}</td>`).join("")}
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+
+                        <h4>Predicciones</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Instancia</th>
+                                    ${columnas_test.map(columna => `<th>${columna}</th>`).join("")}
+                                    <th>Prediccion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${valores_test.map((valores, instancia) => `
+                                    <tr>
+                                        <td>${instancia + 1}</td>
+                                        ${valores.map(valor => `<td>${valor}</td>`).join("")}
+                                        <td>${predicciones[instancia]}</td>
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+                    `).join("")}
+                `
+            } catch(e) {
+                if(e instanceof TypeError){
+                    resultado.innerHTML = `<p class="error">Hubo un error en el servidor</p>`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
