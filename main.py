@@ -16,7 +16,7 @@ templates = Jinja2Templates(directory="templates")
 
 # Endpoint que retorna el template de la página principal
 # Se pueden utilizar query params para pasar los valores iniciales y no perderlos al recargar la página
-#? http://localhost:8000/?iteraciones=2&modelo=one-r&train_size=70&clase=clase
+#? http://localhost:8000/?iteraciones=2&modelo=naive-bayes&train_size=70&clase=clase
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, modelo="naive-bayes", iteraciones=1, clase="", train_size=70):
     return templates.TemplateResponse(

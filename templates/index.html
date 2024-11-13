@@ -153,8 +153,8 @@
                         </tbody>
                     </table>
 
-                    ${resultados.map(({accuracy, precision, recall, f1, predicciones, columnas_train, valores_train, columnas_test, valores_test}, instancia) => `
-                        <h2 class="titulo">Instancia ${instancia + 1}</h2>
+                    ${resultados.map(({accuracy, precision, recall, f1, predicciones, columnas_train, valores_train, columnas_test, valores_test}, iteracion) => `
+                        <h2 class="titulo">Iteración ${iteracion + 1}</h2>
 
                         <h4>Conjunto de entrenamiento</h4>
                         <table>
